@@ -1,7 +1,24 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
+from pymongo import MongoClient
+from dotenv import load_dotenv
+import os
 
+# Load .env variables
+load_dotenv()
+
+# Flask app setup
 app = Flask(__name__)
 
+MONGODB_URI = os.getenv("MONGODB_URI")
+MONGODB_DB = os.getenv("MONGODB_DB")
+MONGODB_COLLECTION = os.getenv("MONGODB_COLLECTION")
+
+# Setup MongoDB client and collection using env variables
+client = MongoClient(MONGODB_URI)
+db = client[MONGODB_DB]
+collection = db[MONGODB_COLLECTION]
+
+# Your routes
 @app.route("/")
 @app.route("/home")
 def index():
@@ -10,6 +27,10 @@ def index():
 @app.route("/dashboard")
 def dashboard():
     return render_template("pages/dashboard.html")
+
+@app.route("/data")
+def visualize():
+    return render_template("pages/visualize.html")
 
 @app.route("/accordion")
 def accordion():
@@ -62,6 +83,13 @@ def input_counter():
 @app.route("/datepicker")
 def datepicker():
 	return render_template("datepicker.html")
+
+
+# API route to get data from MongoDB Atlas
+@app.route("/api/v1/data")
+def api_data():
+    data = list(collection.find({}, {"_id": 0}))  # exclude MongoDB _id field
+    return jsonify(data)
 
 if __name__ == '__main__':
 	app.run(debug=True)

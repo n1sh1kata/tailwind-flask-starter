@@ -1,0 +1,110 @@
+{% extends "_base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mt-10">
+    <h2 class="text-3xl font-bold mb-6 text-center">Potentiometer & Brightness Statistics</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col items-center">
+            <div class="text-4xl font-bold text-blue-600" id="avg-pot">-</div>
+            <div class="text-gray-500 dark:text-gray-400 mt-2">Avg Potentiometer</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col items-center">
+            <div class="text-4xl font-bold text-yellow-500" id="avg-bright">-</div>
+            <div class="text-gray-500 dark:text-gray-400 mt-2">Avg Brightness</div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 flex flex-col items-center">
+            <div class="text-4xl font-bold text-green-600" id="count">-</div>
+            <div class="text-gray-500 dark:text-gray-400 mt-2">Samples</div>
+        </div>
+    </div>
+
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <canvas id="potChart" height="120"></canvas>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-8">
+        <canvas id="brightChart" height="120"></canvas>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        fetch("/api/v1/data")
+            .then(res => res.json())
+            .then(data => {
+                if (!Array.isArray(data) || data.length === 0) {
+                    console.warn("No data received");
+                    return;
+                }
+
+                const labels = data.map(d => {
+                    const date = new Date(d.timestamp * 1000); // handle float timestamp
+                    return date.toLocaleTimeString();
+                });
+
+                const potVals = data.map(d => d.potentiometer || 0);
+                const brightVals = data.map(d => d.brightness || 0);
+
+                const avg = arr => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+                document.getElementById('avg-pot').textContent = avg(potVals).toFixed(1);
+                document.getElementById('avg-bright').textContent = avg(brightVals).toFixed(1);
+                document.getElementById('count').textContent = data.length;
+
+                // Potentiometer Chart
+                new Chart(document.getElementById('potChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Potentiometer',
+                            data: potVals,
+                            borderColor: 'rgb(37, 99, 235)',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            tension: 0.3,
+                            pointRadius: 2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { title: { display: true, text: 'Time' } },
+                            y: { title: { display: true, text: 'Potentiometer' }, beginAtZero: true }
+                        }
+                    }
+                });
+
+                // Brightness Chart
+                new Chart(document.getElementById('brightChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Brightness',
+                            data: brightVals,
+                            borderColor: 'rgb(234, 179, 8)',
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            tension: 0.3,
+                            pointRadius: 2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { title: { display: true, text: 'Time' } },
+                            y: { title: { display: true, text: 'Brightness' }, beginAtZero: true }
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                console.error("Error fetching data:", err);
+            });
+    });
+</script>
+{% endblock %}
