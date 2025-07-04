@@ -1,6 +1,7 @@
 from flask import Flask, render_template, jsonify
 from pymongo import MongoClient
 from dotenv import load_dotenv
+from flask_socketio import SocketIO, emit  # <-- Add this import
 import os
 
 # Load .env variables
@@ -8,6 +9,7 @@ load_dotenv()
 
 # Flask app setup
 app = Flask(__name__)
+socketio = SocketIO(app)
 
 MONGODB_URI = os.getenv("MONGODB_URI")
 MONGODB_DB = os.getenv("MONGODB_DB")
@@ -85,11 +87,11 @@ def datepicker():
 	return render_template("datepicker.html")
 
 
-# API route to get data from MongoDB Atlas
-@app.route("/api/v1/data")
-def api_data():
+# WebSocket event to get data from MongoDB Atlas
+@socketio.on('get_data')
+def handle_get_data():
     data = list(collection.find({}, {"_id": 0}))  # exclude MongoDB _id field
-    return jsonify(data)
+    emit('data_response', data)  # Send data back to client
 
 if __name__ == '__main__':
-	app.run(debug=True)
+    socketio.run(app, debug=True)  
